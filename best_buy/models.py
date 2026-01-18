@@ -16,7 +16,7 @@ class Product(Base):
     """
     Master product catalog - seeded from CSE pricebook.
     """
-    __tablename__ = "products"
+    __tablename__ = "bb_products"
 
     id = Column(Integer, primary_key=True, index=True)
     upc = Column(String(20), unique=True, nullable=False, index=True)
@@ -50,7 +50,7 @@ class Supplier(Base):
     """
     Warehouse/distributor definitions.
     """
-    __tablename__ = "suppliers"
+    __tablename__ = "bb_suppliers"
 
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String(20), unique=True, nullable=False)
@@ -94,14 +94,14 @@ class SupplierPrice(Base):
     Price per UPC per supplier.
     Like Lighthouse ProductRealTimeCost.
     """
-    __tablename__ = "supplier_prices"
+    __tablename__ = "bb_supplier_prices"
 
     id = Column(Integer, primary_key=True, index=True)
 
     # Product reference
     upc = Column(String(20), nullable=False, index=True)
-    product_id = Column(Integer, ForeignKey("products.id"))
-    supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("bb_products.id"))
+    supplier_id = Column(Integer, ForeignKey("bb_suppliers.id"), nullable=False)
     supplier_sku = Column(String(50))  # Supplier's item code
 
     # Pricing
@@ -138,10 +138,10 @@ class UPCAlias(Base):
     Map supplier's product codes to standard UPC.
     Like Lighthouse ProductsAlias.
     """
-    __tablename__ = "upc_aliases"
+    __tablename__ = "bb_upc_aliases"
 
     id = Column(Integer, primary_key=True, index=True)
-    supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=False)
+    supplier_id = Column(Integer, ForeignKey("bb_suppliers.id"), nullable=False)
     supplier_sku = Column(String(50), nullable=False)
     supplier_name = Column(String(255))  # Supplier's product name
     standard_upc = Column(String(20), nullable=False, index=True)
@@ -161,10 +161,10 @@ class SupplierShipping(Base):
     """
     Shipping costs per supplier for landed cost calculation.
     """
-    __tablename__ = "supplier_shipping"
+    __tablename__ = "bb_supplier_shipping"
 
     id = Column(Integer, primary_key=True, index=True)
-    supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=False)
+    supplier_id = Column(Integer, ForeignKey("bb_suppliers.id"), nullable=False)
 
     method = Column(String(50), default='delivery')
     per_case_fee = Column(Numeric(10, 4))
@@ -182,13 +182,13 @@ class BestBuyComparison(Base):
     Saved scan results with all price options.
     Like Lighthouse supply_options JSONB.
     """
-    __tablename__ = "best_buy_comparisons"
+    __tablename__ = "bb_comparisons"
 
     id = Column(Integer, primary_key=True, index=True)
 
     # What was scanned
     upc = Column(String(20), nullable=False, index=True)
-    product_id = Column(Integer, ForeignKey("products.id"))
+    product_id = Column(Integer, ForeignKey("bb_products.id"))
     scanned_at = Column(DateTime, server_default=func.now())
     scanned_by = Column(String(50))
 
@@ -197,7 +197,7 @@ class BestBuyComparison(Base):
     current_vendor = Column(String(100))
 
     # Best option found
-    best_supplier_id = Column(Integer, ForeignKey("suppliers.id"))
+    best_supplier_id = Column(Integer, ForeignKey("bb_suppliers.id"))
     best_unit_cost = Column(Numeric(10, 4))
     savings_per_unit = Column(Numeric(10, 4))
     savings_percent = Column(Numeric(5, 2))
@@ -220,10 +220,10 @@ class SupplierPriceFeed(Base):
     """
     Track data imports from supplier feeds.
     """
-    __tablename__ = "supplier_price_feeds"
+    __tablename__ = "bb_supplier_price_feeds"
 
     id = Column(Integer, primary_key=True, index=True)
-    supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=False)
+    supplier_id = Column(Integer, ForeignKey("bb_suppliers.id"), nullable=False)
 
     feed_type = Column(String(50), nullable=False)
     feed_source = Column(String(255))
