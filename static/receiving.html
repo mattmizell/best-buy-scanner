@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Receiving - Ordering Hub</title>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f0f23;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a1a3e 0%, #0f0f23 100%);
+            padding: 16px;
+            text-align: center;
+            border-bottom: 1px solid #333;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header h1 { font-size: 20px; font-weight: 600; color: #fff; }
+        .header .subtitle { font-size: 12px; color: #888; margin-top: 4px; }
+
+        .nav-bar {
+            display: flex;
+            gap: 8px;
+            padding: 12px 16px;
+            background: #1a1a3e;
+            border-bottom: 1px solid #333;
+            overflow-x: auto;
+        }
+        .nav-btn {
+            padding: 8px 16px;
+            background: #333;
+            border: none;
+            border-radius: 6px;
+            color: #888;
+            font-size: 13px;
+            cursor: pointer;
+            white-space: nowrap;
+            text-decoration: none;
+        }
+        .nav-btn.active { background: #4ecca3; color: #0f0f23; }
+        .nav-btn:hover:not(.active) { background: #444; }
+
+        .container { padding: 16px; max-width: 600px; margin: 0 auto; }
+
+        .card {
+            background: linear-gradient(135deg, #1a1a3e 0%, #252550 100%);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid #333;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status-in_progress { background: rgba(255, 193, 7, 0.2); color: #ffc107; }
+        .status-completed { background: rgba(78, 204, 163, 0.2); color: #4ecca3; }
+
+        .discrepancy-short { color: #ff6b6b; }
+        .discrepancy-over { color: #ffc107; }
+        .discrepancy-damaged { color: #ff9800; }
+        .discrepancy-wrong_item { color: #e91e63; }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            text-decoration: none;
+        }
+        .btn-primary { background: #4ecca3; color: #0f0f23; }
+        .btn-primary:hover { background: #3db892; }
+        .btn-secondary { background: #333; color: #fff; }
+        .btn-secondary:hover { background: #444; }
+        .btn-sm { padding: 8px 12px; font-size: 13px; width: auto; display: inline-block; }
+
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 13px; color: #888; margin-bottom: 6px; }
+        .form-group select, .form-group input {
+            width: 100%;
+            padding: 12px;
+            background: #1a1a3e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 15px;
+        }
+        .form-group select:focus, .form-group input:focus { outline: none; border-color: #4ecca3; }
+
+        #scanner-container {
+            max-width: 400px;
+            margin: 0 auto 16px;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #1a1a3e;
+        }
+        #reader { width: 100%; }
+
+        .expected-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: #1a1a3e;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            border: 1px solid transparent;
+        }
+        .expected-item:hover { border-color: #4ecca3; }
+        .expected-item.received { opacity: 0.5; }
+        .expected-item-info { flex: 1; min-width: 0; }
+        .expected-item-name { font-size: 14px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .expected-item-upc { font-size: 11px; color: #888; }
+        .expected-item-qty { text-align: right; min-width: 80px; }
+        .expected-item-qty .ordered { font-size: 14px; color: #888; }
+        .expected-item-qty .received { font-size: 14px; color: #4ecca3; font-weight: 600; }
+
+        .received-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: #1a1a3e;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        .received-item.has-discrepancy { border-left: 3px solid #ff6b6b; }
+        .received-item-info { flex: 1; min-width: 0; }
+        .received-item-name { font-size: 14px; color: #fff; }
+        .received-item-upc { font-size: 11px; color: #888; }
+        .received-item-qty { font-size: 18px; font-weight: 600; color: #4ecca3; text-align: right; min-width: 50px; }
+        .received-item-discrepancy { font-size: 11px; margin-top: 4px; }
+
+        .session-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .stat-box {
+            background: #1a1a3e;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+        .stat-value { font-size: 24px; font-weight: 700; color: #4ecca3; }
+        .stat-label { font-size: 11px; color: #888; margin-top: 4px; }
+        .stat-box.warning .stat-value { color: #ffc107; }
+        .stat-box.danger .stat-value { color: #ff6b6b; }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: #1a1a3e;
+            border-radius: 16px;
+            padding: 24px;
+            width: 90%;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal h2 { font-size: 18px; color: #fff; margin-bottom: 16px; }
+
+        .empty-state { text-align: center; padding: 40px 20px; color: #888; }
+        .empty-state-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
+
+        .actions-row { display: flex; gap: 8px; margin-top: 16px; }
+        .actions-row .btn { flex: 1; }
+
+        .hidden { display: none !important; }
+
+        .scan-prompt {
+            text-align: center;
+            padding: 16px;
+            color: #888;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Receiving</h1>
+        <div class="subtitle">Receive deliveries against orders</div>
+    </div>
+
+    <nav class="nav-bar">
+        <a href="index.html" class="nav-btn">Scanner</a>
+        <a href="orders.html" class="nav-btn">Orders</a>
+        <a href="receiving.html" class="nav-btn active">Receiving</a>
+    </nav>
+
+    <!-- Session Selection View -->
+    <div id="session-select-view" class="container">
+        <h2 style="font-size: 16px; color: #fff; margin-bottom: 16px;">Start Receiving</h2>
+
+        <div class="card">
+            <div class="form-group">
+                <label>Receive Against</label>
+                <select id="po-select">
+                    <option value="">Select PO or supplier...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Invoice Number (optional)</label>
+                <input type="text" id="invoice-number" placeholder="Supplier invoice #">
+            </div>
+            <button class="btn btn-primary" onclick="startSession()">Start Receiving</button>
+        </div>
+
+        <h3 style="font-size: 14px; color: #888; margin: 24px 0 12px;">Recent Sessions</h3>
+        <div id="sessions-list">
+            <div class="empty-state" style="padding: 20px;">
+                <div>No recent sessions</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Receiving Session View -->
+    <div id="session-view" class="container hidden">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div>
+                <div style="font-size: 14px; color: #888;">Receiving for</div>
+                <div id="session-po-number" style="font-size: 18px; font-weight: 600; color: #fff;">PO-XXX</div>
+            </div>
+            <span id="session-status" class="status-badge status-in_progress">In Progress</span>
+        </div>
+
+        <div class="session-stats">
+            <div class="stat-box">
+                <div class="stat-value" id="stat-items">0</div>
+                <div class="stat-label">Items</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="stat-cases">0</div>
+                <div class="stat-label">Cases</div>
+            </div>
+            <div class="stat-box warning" id="stat-issues-box">
+                <div class="stat-value" id="stat-issues">0</div>
+                <div class="stat-label">Issues</div>
+            </div>
+        </div>
+
+        <!-- Scanner -->
+        <div id="scanner-section">
+            <div id="scanner-container">
+                <div id="reader"></div>
+            </div>
+            <div class="scan-prompt">Scan item barcode to receive</div>
+        </div>
+
+        <!-- Manual entry -->
+        <div class="card" style="margin-top: 16px;">
+            <div style="display: flex; gap: 8px;">
+                <input type="text" id="manual-upc" placeholder="Enter UPC manually" style="flex: 1; padding: 10px; background: #252550; border: 1px solid #333; border-radius: 6px; color: #fff;">
+                <button class="btn btn-primary btn-sm" onclick="manualReceive()">Receive</button>
+            </div>
+        </div>
+
+        <!-- Expected Items -->
+        <div id="expected-section" style="margin-top: 24px;">
+            <h3 style="font-size: 14px; color: #888; margin-bottom: 12px;">EXPECTED ITEMS</h3>
+            <div id="expected-items-list"></div>
+        </div>
+
+        <!-- Received Items -->
+        <div style="margin-top: 24px;">
+            <h3 style="font-size: 14px; color: #888; margin-bottom: 12px;">RECEIVED THIS SESSION</h3>
+            <div id="received-items-list"></div>
+        </div>
+
+        <div class="actions-row" style="margin-top: 24px;">
+            <button class="btn btn-secondary" onclick="cancelSession()">Cancel</button>
+            <button class="btn btn-primary" onclick="completeSession()">Complete Receiving</button>
+        </div>
+    </div>
+
+    <!-- Receive Quantity Modal -->
+    <div id="receive-modal" class="modal-overlay">
+        <div class="modal">
+            <h2>Receive Item</h2>
+            <div id="receive-product-info" class="card" style="margin-bottom: 16px;">
+                <div id="receive-product-name" style="font-size: 16px; font-weight: 600; color: #fff;"></div>
+                <div id="receive-product-upc" style="font-size: 12px; color: #888; margin-top: 4px;"></div>
+                <div id="receive-expected" style="font-size: 13px; color: #4ecca3; margin-top: 8px;"></div>
+            </div>
+            <div class="form-group">
+                <label>Quantity Received (cases)</label>
+                <input type="number" id="receive-qty" value="1" min="0">
+            </div>
+            <div class="form-group">
+                <label>Damaged (cases)</label>
+                <input type="number" id="receive-damaged" value="0" min="0">
+            </div>
+            <div class="form-group">
+                <label>Notes (optional)</label>
+                <input type="text" id="receive-notes" placeholder="Any issues...">
+            </div>
+            <div class="actions-row">
+                <button class="btn btn-secondary" onclick="closeReceiveModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmReceive()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/best-buy';
+        let currentSessionId = null;
+        let currentSession = null;
+        let pendingUpc = null;
+        let scanner = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const params = new URLSearchParams(window.location.search);
+            const poId = params.get('po_id');
+
+            await loadPOOptions();
+            await loadRecentSessions();
+
+            if (poId) {
+                document.getElementById('po-select').value = 'po_' + poId;
+                startSession();
+            }
+        });
+
+        async function loadPOOptions() {
+            try {
+                const posRes = await fetch(API_BASE + '/orders?status=sent');
+                const sentPos = await posRes.json();
+                const partialRes = await fetch(API_BASE + '/orders?status=partial');
+                const partialPos = await partialRes.json();
+                const allPos = [...sentPos, ...partialPos];
+
+                const suppRes = await fetch(API_BASE + '/suppliers');
+                const suppliers = await suppRes.json();
+
+                const select = document.getElementById('po-select');
+                select.innerHTML = '';
+                const defaultOpt = document.createElement('option');
+                defaultOpt.value = '';
+                defaultOpt.textContent = 'Select PO or supplier...';
+                select.appendChild(defaultOpt);
+
+                if (allPos.length > 0) {
+                    const poGroup = document.createElement('optgroup');
+                    poGroup.label = 'Open Purchase Orders';
+                    allPos.forEach(po => {
+                        const opt = document.createElement('option');
+                        opt.value = 'po_' + po.id;
+                        opt.textContent = po.po_number + ' - ' + po.supplier_name + ' ($' + po.total_cost.toFixed(2) + ')';
+                        poGroup.appendChild(opt);
+                    });
+                    select.appendChild(poGroup);
+                }
+
+                const suppGroup = document.createElement('optgroup');
+                suppGroup.label = 'Ad-hoc (No PO)';
+                suppliers.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = 'supplier_' + s.id;
+                    opt.textContent = s.name;
+                    suppGroup.appendChild(opt);
+                });
+                select.appendChild(suppGroup);
+            } catch (e) {
+                console.error('Failed to load options:', e);
+            }
+        }
+
+        async function loadRecentSessions() {
+            try {
+                const res = await fetch(API_BASE + '/receiving/sessions?limit=10');
+                const sessions = await res.json();
+                renderSessionsList(sessions);
+            } catch (e) {
+                console.error('Failed to load sessions:', e);
+            }
+        }
+
+        function renderSessionsList(sessions) {
+            const container = document.getElementById('sessions-list');
+            container.innerHTML = '';
+
+            if (sessions.length === 0) {
+                const emptyDiv = document.createElement('div');
+                emptyDiv.className = 'empty-state';
+                emptyDiv.style.padding = '20px';
+                emptyDiv.textContent = 'No recent sessions';
+                container.appendChild(emptyDiv);
+                return;
+            }
+
+            sessions.forEach(s => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.style.cursor = 'pointer';
+                card.onclick = () => { if (s.status === 'in_progress') resumeSession(s.id); };
+
+                const header = document.createElement('div');
+                header.style.cssText = 'display: flex; justify-content: space-between; align-items: center;';
+
+                const info = document.createElement('div');
+                const title = document.createElement('div');
+                title.style.cssText = 'font-size: 14px; font-weight: 600; color: #fff;';
+                title.textContent = s.po_number || s.supplier_name;
+                const date = document.createElement('div');
+                date.style.cssText = 'font-size: 12px; color: #888;';
+                date.textContent = new Date(s.received_at).toLocaleString();
+                info.appendChild(title);
+                info.appendChild(date);
+
+                const badge = document.createElement('span');
+                badge.className = 'status-badge status-' + s.status;
+                badge.textContent = s.status.replace('_', ' ');
+
+                header.appendChild(info);
+                header.appendChild(badge);
+                card.appendChild(header);
+
+                const stats = document.createElement('div');
+                stats.style.cssText = 'display: flex; gap: 16px; margin-top: 8px; font-size: 12px; color: #888;';
+                const itemsSpan = document.createElement('span');
+                itemsSpan.textContent = s.total_items + ' items';
+                const casesSpan = document.createElement('span');
+                casesSpan.textContent = s.total_cases + ' cases';
+                stats.appendChild(itemsSpan);
+                stats.appendChild(casesSpan);
+                if (s.items_short > 0 || s.items_damaged > 0) {
+                    const issues = document.createElement('span');
+                    issues.style.color = '#ff6b6b';
+                    issues.textContent = (s.items_short + s.items_damaged) + ' issues';
+                    stats.appendChild(issues);
+                }
+                card.appendChild(stats);
+                container.appendChild(card);
+            });
+        }
+
+        async function startSession() {
+            const selection = document.getElementById('po-select').value;
+            const invoiceNumber = document.getElementById('invoice-number').value;
+
+            if (!selection) { alert('Please select a PO or supplier'); return; }
+
+            const [type, id] = selection.split('_');
+            const params = new URLSearchParams();
+            if (type === 'po') params.set('po_id', id);
+            else params.set('supplier_id', id);
+            if (invoiceNumber) params.set('invoice_number', invoiceNumber);
+
+            try {
+                const res = await fetch(API_BASE + '/receiving/sessions?' + params, { method: 'POST' });
+                const session = await res.json();
+                currentSessionId = session.id;
+                await loadSession(session.id);
+                showSessionView();
+            } catch (e) {
+                console.error('Failed to start session:', e);
+                alert('Failed to start receiving session');
+            }
+        }
+
+        async function resumeSession(sessionId) {
+            currentSessionId = sessionId;
+            await loadSession(sessionId);
+            showSessionView();
+        }
+
+        async function loadSession(sessionId) {
+            try {
+                const res = await fetch(API_BASE + '/receiving/sessions/' + sessionId);
+                currentSession = await res.json();
+                renderSession();
+            } catch (e) { console.error('Failed to load session:', e); }
+        }
+
+        function showSessionView() {
+            document.getElementById('session-select-view').classList.add('hidden');
+            document.getElementById('session-view').classList.remove('hidden');
+            startScanner();
+        }
+
+        function showSelectView() {
+            document.getElementById('session-view').classList.add('hidden');
+            document.getElementById('session-select-view').classList.remove('hidden');
+            stopScanner();
+            loadRecentSessions();
+        }
+
+        function renderSession() {
+            const s = currentSession;
+            document.getElementById('session-po-number').textContent = s.po_number || s.supplier_name;
+            document.getElementById('session-status').textContent = s.status.replace('_', ' ');
+            document.getElementById('session-status').className = 'status-badge status-' + s.status;
+            document.getElementById('stat-items').textContent = s.total_items;
+            document.getElementById('stat-cases').textContent = s.total_cases;
+            const issues = s.items_short + s.items_over + s.items_damaged;
+            document.getElementById('stat-issues').textContent = issues;
+            document.getElementById('stat-issues-box').className = issues > 0 ? 'stat-box danger' : 'stat-box';
+
+            const expectedContainer = document.getElementById('expected-items-list');
+            expectedContainer.innerHTML = '';
+            if (s.expected_items && s.expected_items.length > 0) {
+                document.getElementById('expected-section').classList.remove('hidden');
+                s.expected_items.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'expected-item' + (item.qty_received >= item.qty_ordered ? ' received' : '');
+                    div.onclick = () => showReceiveModal(item.upc, item.product_name, item.qty_ordered - item.qty_received);
+
+                    const info = document.createElement('div');
+                    info.className = 'expected-item-info';
+                    const name = document.createElement('div');
+                    name.className = 'expected-item-name';
+                    name.textContent = item.product_name;
+                    const upc = document.createElement('div');
+                    upc.className = 'expected-item-upc';
+                    upc.textContent = item.upc;
+                    info.appendChild(name);
+                    info.appendChild(upc);
+
+                    const qty = document.createElement('div');
+                    qty.className = 'expected-item-qty';
+                    const ordered = document.createElement('div');
+                    ordered.className = 'ordered';
+                    ordered.textContent = 'Ordered: ' + item.qty_ordered;
+                    const received = document.createElement('div');
+                    received.className = 'received';
+                    received.textContent = 'Received: ' + item.qty_received;
+                    qty.appendChild(ordered);
+                    qty.appendChild(received);
+                    div.appendChild(info);
+                    div.appendChild(qty);
+                    expectedContainer.appendChild(div);
+                });
+            } else {
+                document.getElementById('expected-section').classList.add('hidden');
+            }
+
+            const receivedContainer = document.getElementById('received-items-list');
+            receivedContainer.innerHTML = '';
+            if (s.received_items && s.received_items.length > 0) {
+                s.received_items.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'received-item' + (item.discrepancy_type ? ' has-discrepancy' : '');
+
+                    const info = document.createElement('div');
+                    info.className = 'received-item-info';
+                    const name = document.createElement('div');
+                    name.className = 'received-item-name';
+                    name.textContent = item.product_name;
+                    const upc = document.createElement('div');
+                    upc.className = 'received-item-upc';
+                    upc.textContent = item.upc;
+                    info.appendChild(name);
+                    info.appendChild(upc);
+                    if (item.discrepancy_type) {
+                        const disc = document.createElement('div');
+                        disc.className = 'received-item-discrepancy discrepancy-' + item.discrepancy_type;
+                        disc.textContent = item.discrepancy_type.toUpperCase() + ': ' + item.discrepancy_qty;
+                        info.appendChild(disc);
+                    }
+
+                    const qty = document.createElement('div');
+                    qty.className = 'received-item-qty';
+                    qty.textContent = item.qty_received;
+                    div.appendChild(info);
+                    div.appendChild(qty);
+                    receivedContainer.appendChild(div);
+                });
+            } else {
+                const emptyDiv = document.createElement('div');
+                emptyDiv.className = 'empty-state';
+                emptyDiv.style.padding = '20px';
+                const emptyText = document.createElement('div');
+                emptyText.textContent = 'No items received yet';
+                const emptyHint = document.createElement('div');
+                emptyHint.style.cssText = 'font-size: 13px; margin-top: 4px;';
+                emptyHint.textContent = 'Scan items to receive them';
+                emptyDiv.appendChild(emptyText);
+                emptyDiv.appendChild(emptyHint);
+                receivedContainer.appendChild(emptyDiv);
+            }
+        }
+
+        async function startScanner() {
+            if (scanner) return;
+            scanner = new Html5Qrcode("reader");
+            try {
+                await scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 150 } }, onScanSuccess, () => {});
+            } catch (err) { console.error("Scanner error:", err); }
+        }
+
+        function stopScanner() {
+            if (scanner) { scanner.stop().catch(() => {}); scanner = null; }
+        }
+
+        async function onScanSuccess(upc) {
+            let expectedQty = null;
+            let productName = 'UPC: ' + upc;
+            if (currentSession.expected_items) {
+                const expected = currentSession.expected_items.find(i => i.upc === upc);
+                if (expected) { expectedQty = expected.qty_ordered - expected.qty_received; productName = expected.product_name; }
+            }
+            showReceiveModal(upc, productName, expectedQty);
+        }
+
+        function manualReceive() {
+            const upc = document.getElementById('manual-upc').value.trim();
+            if (!upc) { alert('Please enter a UPC'); return; }
+            onScanSuccess(upc);
+            document.getElementById('manual-upc').value = '';
+        }
+
+        function showReceiveModal(upc, productName, expectedQty) {
+            pendingUpc = upc;
+            document.getElementById('receive-product-name').textContent = productName;
+            document.getElementById('receive-product-upc').textContent = upc;
+            if (expectedQty !== null && expectedQty !== undefined) {
+                document.getElementById('receive-expected').textContent = 'Expected: ' + expectedQty + ' cases';
+                document.getElementById('receive-qty').value = expectedQty;
+            } else {
+                document.getElementById('receive-expected').textContent = 'Not on PO';
+                document.getElementById('receive-qty').value = 1;
+            }
+            document.getElementById('receive-damaged').value = 0;
+            document.getElementById('receive-notes').value = '';
+            document.getElementById('receive-modal').classList.add('active');
+        }
+
+        function closeReceiveModal() {
+            document.getElementById('receive-modal').classList.remove('active');
+            pendingUpc = null;
+        }
+
+        async function confirmReceive() {
+            const qty = parseInt(document.getElementById('receive-qty').value) || 0;
+            const damaged = parseInt(document.getElementById('receive-damaged').value) || 0;
+            const notes = document.getElementById('receive-notes').value;
+            if (qty <= 0) { alert('Please enter quantity received'); return; }
+
+            try {
+                const params = new URLSearchParams({ upc: pendingUpc, qty_received: qty, qty_damaged: damaged });
+                if (notes) params.set('notes', notes);
+                const res = await fetch(API_BASE + '/receiving/sessions/' + currentSessionId + '/receive?' + params, { method: 'POST' });
+                if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Failed to receive item'); }
+                closeReceiveModal();
+                await loadSession(currentSessionId);
+            } catch (e) { console.error('Failed to receive item:', e); alert(e.message); }
+        }
+
+        async function completeSession() {
+            if (!confirm('Complete this receiving session?')) return;
+            try {
+                const res = await fetch(API_BASE + '/receiving/sessions/' + currentSessionId + '/complete', { method: 'POST' });
+                if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Failed to complete session'); }
+                alert('Receiving completed!');
+                showSelectView();
+            } catch (e) { console.error('Failed to complete session:', e); alert(e.message); }
+        }
+
+        function cancelSession() {
+            if (!confirm('Cancel this session? Progress will not be saved.')) return;
+            showSelectView();
+        }
+    </script>
+</body>
+</html>

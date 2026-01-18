@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Orders - Ordering Hub</title>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f0f23;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a1a3e 0%, #0f0f23 100%);
+            padding: 16px;
+            text-align: center;
+            border-bottom: 1px solid #333;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header h1 { font-size: 20px; font-weight: 600; color: #fff; }
+        .header .subtitle { font-size: 12px; color: #888; margin-top: 4px; }
+
+        .nav-bar {
+            display: flex;
+            gap: 8px;
+            padding: 12px 16px;
+            background: #1a1a3e;
+            border-bottom: 1px solid #333;
+            overflow-x: auto;
+        }
+        .nav-btn {
+            padding: 8px 16px;
+            background: #333;
+            border: none;
+            border-radius: 6px;
+            color: #888;
+            font-size: 13px;
+            cursor: pointer;
+            white-space: nowrap;
+            text-decoration: none;
+        }
+        .nav-btn.active { background: #4ecca3; color: #0f0f23; }
+        .nav-btn:hover:not(.active) { background: #444; }
+
+        .container { padding: 16px; max-width: 600px; margin: 0 auto; }
+
+        .card {
+            background: linear-gradient(135deg, #1a1a3e 0%, #252550 100%);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid #333;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status-draft { background: #444; color: #888; }
+        .status-sent { background: rgba(78, 204, 163, 0.2); color: #4ecca3; }
+        .status-partial { background: rgba(255, 193, 7, 0.2); color: #ffc107; }
+        .status-received { background: rgba(33, 150, 243, 0.2); color: #2196f3; }
+        .status-closed { background: rgba(156, 39, 176, 0.2); color: #9c27b0; }
+
+        .order-card { cursor: pointer; transition: border-color 0.2s; }
+        .order-card:hover { border-color: #4ecca3; }
+        .order-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+        .order-number { font-size: 16px; font-weight: 600; color: #fff; }
+        .order-supplier { font-size: 13px; color: #888; margin-top: 4px; }
+        .order-meta { display: flex; gap: 16px; font-size: 12px; color: #888; margin-top: 8px; }
+        .order-total { font-size: 18px; font-weight: 700; color: #4ecca3; }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            text-decoration: none;
+        }
+        .btn-primary { background: #4ecca3; color: #0f0f23; }
+        .btn-primary:hover { background: #3db892; }
+        .btn-secondary { background: #333; color: #fff; }
+        .btn-secondary:hover { background: #444; }
+        .btn-danger { background: rgba(255, 107, 107, 0.2); color: #ff6b6b; border: 1px solid rgba(255, 107, 107, 0.3); }
+        .btn-sm { padding: 8px 12px; font-size: 13px; width: auto; display: inline-block; }
+
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 13px; color: #888; margin-bottom: 6px; }
+        .form-group select, .form-group input {
+            width: 100%;
+            padding: 12px;
+            background: #1a1a3e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 15px;
+        }
+        .form-group select:focus, .form-group input:focus { outline: none; border-color: #4ecca3; }
+
+        .line-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: #1a1a3e;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        .line-item-info { flex: 1; min-width: 0; }
+        .line-item-name { font-size: 14px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .line-item-upc { font-size: 11px; color: #888; }
+        .line-item-qty { text-align: center; min-width: 60px; }
+        .line-item-qty input { width: 50px; text-align: center; padding: 6px; }
+        .line-item-cost { text-align: right; min-width: 70px; }
+        .line-item-cost .unit { font-size: 13px; color: #4ecca3; }
+        .line-item-cost .total { font-size: 11px; color: #888; }
+        .line-item-delete { color: #ff6b6b; cursor: pointer; padding: 8px; }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: #1a1a3e;
+            border-radius: 16px;
+            padding: 24px;
+            width: 90%;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal h2 { font-size: 18px; color: #fff; margin-bottom: 16px; }
+
+        #scanner-modal #reader { width: 100%; border-radius: 8px; overflow: hidden; }
+
+        .empty-state { text-align: center; padding: 40px 20px; color: #888; }
+        .empty-state-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
+
+        .actions-row { display: flex; gap: 8px; margin-top: 16px; }
+        .actions-row .btn { flex: 1; }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #333;
+        }
+        .summary-row:last-child { border-bottom: none; }
+        .summary-label { color: #888; }
+        .summary-value { color: #fff; font-weight: 600; }
+        .summary-value.total { color: #4ecca3; font-size: 20px; }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Ordering Hub</h1>
+        <div class="subtitle">Purchase Orders & Receiving</div>
+    </div>
+
+    <nav class="nav-bar">
+        <a href="index.html" class="nav-btn">Scanner</a>
+        <a href="orders.html" class="nav-btn active">Orders</a>
+        <a href="receiving.html" class="nav-btn">Receiving</a>
+    </nav>
+
+    <!-- Order List View -->
+    <div id="order-list-view" class="container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h2 style="font-size: 16px; color: #fff;">Purchase Orders</h2>
+            <button class="btn btn-primary btn-sm" onclick="showNewOrderModal()">+ New Order</button>
+        </div>
+
+        <div id="orders-container">
+            <div class="empty-state">
+                <div class="empty-state-icon">📦</div>
+                <div>No orders yet</div>
+                <div style="margin-top: 8px; font-size: 13px;">Create your first purchase order</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Detail View -->
+    <div id="order-detail-view" class="container hidden">
+        <button class="btn btn-secondary btn-sm" onclick="showOrderList()" style="margin-bottom: 16px;">&larr; Back to Orders</button>
+
+        <div class="card" id="order-detail-header">
+            <!-- Filled by JS -->
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin: 16px 0;">
+            <h3 style="font-size: 14px; color: #888;">LINE ITEMS</h3>
+            <button class="btn btn-primary btn-sm" onclick="showAddItemModal()">+ Add Item</button>
+        </div>
+
+        <div id="line-items-container">
+            <!-- Filled by JS -->
+        </div>
+
+        <div class="card" style="margin-top: 16px;">
+            <div class="summary-row">
+                <span class="summary-label">Items</span>
+                <span class="summary-value" id="detail-total-items">0</span>
+            </div>
+            <div class="summary-row">
+                <span class="summary-label">Cases</span>
+                <span class="summary-value" id="detail-total-cases">0</span>
+            </div>
+            <div class="summary-row">
+                <span class="summary-label">Total</span>
+                <span class="summary-value total" id="detail-total-cost">$0.00</span>
+            </div>
+        </div>
+
+        <div class="actions-row" id="order-actions">
+            <!-- Filled by JS based on status -->
+        </div>
+    </div>
+
+    <!-- New Order Modal -->
+    <div id="new-order-modal" class="modal-overlay">
+        <div class="modal">
+            <h2>New Purchase Order</h2>
+            <div class="form-group">
+                <label>Supplier</label>
+                <select id="supplier-select">
+                    <option value="">Select supplier...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Notes (optional)</label>
+                <input type="text" id="order-notes" placeholder="Order notes...">
+            </div>
+            <div class="actions-row">
+                <button class="btn btn-secondary" onclick="closeModal('new-order-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="createOrder()">Create Order</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Item Modal -->
+    <div id="add-item-modal" class="modal-overlay">
+        <div class="modal">
+            <h2>Add Item</h2>
+            <div class="form-group">
+                <label>UPC</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="item-upc" placeholder="Enter UPC or scan" style="flex: 1;">
+                    <button class="btn btn-secondary btn-sm" onclick="openScanner()">Scan</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Quantity (cases)</label>
+                <input type="number" id="item-qty" value="1" min="1">
+            </div>
+            <div id="item-preview" class="card hidden" style="margin-bottom: 16px;">
+                <!-- Product preview -->
+            </div>
+            <div class="actions-row">
+                <button class="btn btn-secondary" onclick="closeModal('add-item-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="addItemToOrder()">Add to Order</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scanner Modal -->
+    <div id="scanner-modal" class="modal-overlay">
+        <div class="modal">
+            <h2>Scan Barcode</h2>
+            <div id="reader"></div>
+            <button class="btn btn-secondary" style="margin-top: 16px;" onclick="closeScanner()">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/best-buy';
+        let currentOrderId = null;
+        let currentOrder = null;
+        let suppliers = [];
+        let scanner = null;
+
+        // Utility: escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadSuppliers();
+            await loadOrders();
+        });
+
+        async function loadSuppliers() {
+            try {
+                const res = await fetch(`${API_BASE}/suppliers`);
+                suppliers = await res.json();
+                const select = document.getElementById('supplier-select');
+                select.innerHTML = '<option value="">Select supplier...</option>';
+                suppliers.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.textContent = s.name;
+                    select.appendChild(opt);
+                });
+            } catch (e) {
+                console.error('Failed to load suppliers:', e);
+            }
+        }
+
+        async function loadOrders() {
+            try {
+                const res = await fetch(`${API_BASE}/orders`);
+                const orders = await res.json();
+                renderOrderList(orders);
+            } catch (e) {
+                console.error('Failed to load orders:', e);
+            }
+        }
+
+        function renderOrderList(orders) {
+            const container = document.getElementById('orders-container');
+            container.innerHTML = '';
+
+            if (orders.length === 0) {
+                const emptyState = document.createElement('div');
+                emptyState.className = 'empty-state';
+                emptyState.innerHTML = '<div class="empty-state-icon">📦</div><div>No orders yet</div><div style="margin-top: 8px; font-size: 13px;">Create your first purchase order</div>';
+                container.appendChild(emptyState);
+                return;
+            }
+
+            orders.forEach(o => {
+                const card = document.createElement('div');
+                card.className = 'card order-card';
+                card.onclick = () => viewOrder(o.id);
+
+                const header = document.createElement('div');
+                header.className = 'order-header';
+
+                const info = document.createElement('div');
+                const poNum = document.createElement('div');
+                poNum.className = 'order-number';
+                poNum.textContent = o.po_number;
+                const supplier = document.createElement('div');
+                supplier.className = 'order-supplier';
+                supplier.textContent = o.supplier_name;
+                info.appendChild(poNum);
+                info.appendChild(supplier);
+
+                const badge = document.createElement('span');
+                badge.className = `status-badge status-${o.status}`;
+                badge.textContent = o.status;
+
+                header.appendChild(info);
+                header.appendChild(badge);
+                card.appendChild(header);
+
+                const footer = document.createElement('div');
+                footer.style.cssText = 'display: flex; justify-content: space-between; align-items: flex-end;';
+
+                const meta = document.createElement('div');
+                meta.className = 'order-meta';
+                meta.innerHTML = `<span>${o.total_items} items</span><span>${o.total_cases} cases</span>`;
+
+                const total = document.createElement('div');
+                total.className = 'order-total';
+                total.textContent = '$' + o.total_cost.toFixed(2);
+
+                footer.appendChild(meta);
+                footer.appendChild(total);
+                card.appendChild(footer);
+
+                container.appendChild(card);
+            });
+        }
+
+        function showOrderList() {
+            document.getElementById('order-list-view').classList.remove('hidden');
+            document.getElementById('order-detail-view').classList.add('hidden');
+            loadOrders();
+        }
+
+        async function viewOrder(orderId) {
+            currentOrderId = orderId;
+            try {
+                const res = await fetch(`${API_BASE}/orders/${orderId}`);
+                currentOrder = await res.json();
+                renderOrderDetail(currentOrder);
+                document.getElementById('order-list-view').classList.add('hidden');
+                document.getElementById('order-detail-view').classList.remove('hidden');
+            } catch (e) {
+                console.error('Failed to load order:', e);
+                alert('Failed to load order');
+            }
+        }
+
+        function renderOrderDetail(order) {
+            // Header
+            const headerDiv = document.getElementById('order-detail-header');
+            headerDiv.innerHTML = '';
+
+            const header = document.createElement('div');
+            header.className = 'order-header';
+
+            const info = document.createElement('div');
+            const poNum = document.createElement('div');
+            poNum.className = 'order-number';
+            poNum.textContent = order.po_number;
+            const supplier = document.createElement('div');
+            supplier.className = 'order-supplier';
+            supplier.textContent = order.supplier_name;
+            info.appendChild(poNum);
+            info.appendChild(supplier);
+
+            const badge = document.createElement('span');
+            badge.className = `status-badge status-${order.status}`;
+            badge.textContent = order.status;
+
+            header.appendChild(info);
+            header.appendChild(badge);
+            headerDiv.appendChild(header);
+
+            const meta = document.createElement('div');
+            meta.className = 'order-meta';
+            const createdSpan = document.createElement('span');
+            createdSpan.textContent = 'Created: ' + new Date(order.created_at).toLocaleDateString();
+            meta.appendChild(createdSpan);
+            if (order.sent_at) {
+                const sentSpan = document.createElement('span');
+                sentSpan.textContent = 'Sent: ' + new Date(order.sent_at).toLocaleDateString();
+                meta.appendChild(sentSpan);
+            }
+            headerDiv.appendChild(meta);
+
+            // Line items
+            const itemsContainer = document.getElementById('line-items-container');
+            itemsContainer.innerHTML = '';
+
+            if (order.line_items.length === 0) {
+                const emptyDiv = document.createElement('div');
+                emptyDiv.className = 'empty-state';
+                emptyDiv.style.padding = '20px';
+                emptyDiv.innerHTML = '<div>No items yet</div><div style="font-size: 13px; margin-top: 4px;">Add items to this order</div>';
+                itemsContainer.appendChild(emptyDiv);
+            } else {
+                order.line_items.forEach(item => {
+                    const lineItem = document.createElement('div');
+                    lineItem.className = 'line-item';
+
+                    const infoDiv = document.createElement('div');
+                    infoDiv.className = 'line-item-info';
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'line-item-name';
+                    nameDiv.textContent = item.product_name;
+                    const upcDiv = document.createElement('div');
+                    upcDiv.className = 'line-item-upc';
+                    upcDiv.textContent = item.upc;
+                    infoDiv.appendChild(nameDiv);
+                    infoDiv.appendChild(upcDiv);
+
+                    const qtyDiv = document.createElement('div');
+                    qtyDiv.className = 'line-item-qty';
+                    const qtyNum = document.createElement('div');
+                    qtyNum.style.cssText = 'font-size: 16px; font-weight: 600;';
+                    qtyNum.textContent = item.qty_ordered;
+                    const qtyLabel = document.createElement('div');
+                    qtyLabel.style.cssText = 'font-size: 10px; color: #888;';
+                    qtyLabel.textContent = 'cases';
+                    qtyDiv.appendChild(qtyNum);
+                    qtyDiv.appendChild(qtyLabel);
+
+                    const costDiv = document.createElement('div');
+                    costDiv.className = 'line-item-cost';
+                    const unitCost = document.createElement('div');
+                    unitCost.className = 'unit';
+                    unitCost.textContent = '$' + item.unit_cost.toFixed(2);
+                    const totalCost = document.createElement('div');
+                    totalCost.className = 'total';
+                    totalCost.textContent = '$' + item.line_total.toFixed(2);
+                    costDiv.appendChild(unitCost);
+                    costDiv.appendChild(totalCost);
+
+                    lineItem.appendChild(infoDiv);
+                    lineItem.appendChild(qtyDiv);
+                    lineItem.appendChild(costDiv);
+
+                    if (order.status === 'draft') {
+                        const deleteBtn = document.createElement('div');
+                        deleteBtn.className = 'line-item-delete';
+                        deleteBtn.textContent = '✕';
+                        deleteBtn.onclick = () => removeItem(item.id);
+                        lineItem.appendChild(deleteBtn);
+                    }
+
+                    itemsContainer.appendChild(lineItem);
+                });
+            }
+
+            // Totals
+            document.getElementById('detail-total-items').textContent = order.total_items;
+            document.getElementById('detail-total-cases').textContent = order.total_cases;
+            document.getElementById('detail-total-cost').textContent = '$' + order.total_cost.toFixed(2);
+
+            // Actions based on status
+            const actionsDiv = document.getElementById('order-actions');
+            actionsDiv.innerHTML = '';
+
+            if (order.status === 'draft') {
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn btn-danger';
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.onclick = deleteOrder;
+
+                const sendBtn = document.createElement('button');
+                sendBtn.className = 'btn btn-primary';
+                sendBtn.textContent = 'Send Order';
+                sendBtn.onclick = sendOrder;
+
+                actionsDiv.appendChild(deleteBtn);
+                actionsDiv.appendChild(sendBtn);
+            } else if (order.status === 'sent' || order.status === 'partial') {
+                const receiveBtn = document.createElement('a');
+                receiveBtn.href = 'receiving.html?po_id=' + order.id;
+                receiveBtn.className = 'btn btn-primary';
+                receiveBtn.textContent = 'Receive Delivery';
+                actionsDiv.appendChild(receiveBtn);
+            }
+        }
+
+        function showNewOrderModal() {
+            document.getElementById('new-order-modal').classList.add('active');
+        }
+
+        function showAddItemModal() {
+            document.getElementById('item-upc').value = '';
+            document.getElementById('item-qty').value = '1';
+            document.getElementById('item-preview').classList.add('hidden');
+            document.getElementById('add-item-modal').classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        async function createOrder() {
+            const supplierId = document.getElementById('supplier-select').value;
+            const notes = document.getElementById('order-notes').value;
+
+            if (!supplierId) {
+                alert('Please select a supplier');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/orders?supplier_id=${supplierId}&notes=${encodeURIComponent(notes)}`, {
+                    method: 'POST'
+                });
+                const order = await res.json();
+                closeModal('new-order-modal');
+                viewOrder(order.id);
+            } catch (e) {
+                console.error('Failed to create order:', e);
+                alert('Failed to create order');
+            }
+        }
+
+        async function addItemToOrder() {
+            const upc = document.getElementById('item-upc').value.trim();
+            const qty = parseInt(document.getElementById('item-qty').value) || 1;
+
+            if (!upc) {
+                alert('Please enter a UPC');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/orders/${currentOrderId}/items?upc=${upc}&qty=${qty}`, {
+                    method: 'POST'
+                });
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Failed to add item');
+                }
+                closeModal('add-item-modal');
+                viewOrder(currentOrderId);
+            } catch (e) {
+                console.error('Failed to add item:', e);
+                alert(e.message);
+            }
+        }
+
+        async function removeItem(itemId) {
+            if (!confirm('Remove this item?')) return;
+
+            try {
+                await fetch(`${API_BASE}/orders/${currentOrderId}/items/${itemId}`, {
+                    method: 'DELETE'
+                });
+                viewOrder(currentOrderId);
+            } catch (e) {
+                console.error('Failed to remove item:', e);
+                alert('Failed to remove item');
+            }
+        }
+
+        async function sendOrder() {
+            if (!confirm('Send this order to the supplier?')) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/orders/${currentOrderId}/send`, {
+                    method: 'POST'
+                });
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Failed to send order');
+                }
+                viewOrder(currentOrderId);
+            } catch (e) {
+                console.error('Failed to send order:', e);
+                alert(e.message);
+            }
+        }
+
+        async function deleteOrder() {
+            if (!confirm('Delete this order? This cannot be undone.')) return;
+
+            try {
+                await fetch(`${API_BASE}/orders/${currentOrderId}`, {
+                    method: 'DELETE'
+                });
+                showOrderList();
+            } catch (e) {
+                console.error('Failed to delete order:', e);
+                alert('Failed to delete order');
+            }
+        }
+
+        // Scanner
+        function openScanner() {
+            document.getElementById('scanner-modal').classList.add('active');
+            scanner = new Html5Qrcode("reader");
+            scanner.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 150 } },
+                (upc) => {
+                    document.getElementById('item-upc').value = upc;
+                    closeScanner();
+                },
+                () => {}
+            ).catch(err => {
+                console.error("Scanner error:", err);
+            });
+        }
+
+        function closeScanner() {
+            if (scanner) {
+                scanner.stop().catch(() => {});
+                scanner = null;
+            }
+            document.getElementById('scanner-modal').classList.remove('active');
+        }
+    </script>
+</body>
+</html>
