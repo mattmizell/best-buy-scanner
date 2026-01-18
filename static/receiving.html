@@ -337,11 +337,14 @@
 
         async function loadPOOptions() {
             try {
+                // Include draft, sent, and partial POs for receiving
+                const draftRes = await fetch(API_BASE + '/orders?status=draft');
+                const draftPos = await draftRes.json();
                 const posRes = await fetch(API_BASE + '/orders?status=sent');
                 const sentPos = await posRes.json();
                 const partialRes = await fetch(API_BASE + '/orders?status=partial');
                 const partialPos = await partialRes.json();
-                const allPos = [...sentPos, ...partialPos];
+                const allPos = [...draftPos, ...sentPos, ...partialPos];
 
                 const suppRes = await fetch(API_BASE + '/suppliers');
                 const suppliers = await suppRes.json();
