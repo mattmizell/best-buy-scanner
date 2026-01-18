@@ -94,6 +94,16 @@ async def receiving_page():
     return {"error": "Receiving page not found"}
 
 
+@app.get("/scanner.html")
+async def scanner_page():
+    """Serve the Best Buy scanner page."""
+    if FRONTEND_DIR:
+        scanner_file = FRONTEND_DIR / "scanner.html"
+        if scanner_file.exists():
+            return FileResponse(scanner_file)
+    return {"error": "Scanner page not found"}
+
+
 @app.get("/health")
 async def health():
     """Health check endpoint."""

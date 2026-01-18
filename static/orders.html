@@ -26,28 +26,15 @@
         }
         .header h1 { font-size: 20px; font-weight: 600; color: #fff; }
         .header .subtitle { font-size: 12px; color: #888; margin-top: 4px; }
-
-        .nav-bar {
-            display: flex;
-            gap: 8px;
-            padding: 12px 16px;
-            background: #1a1a3e;
-            border-bottom: 1px solid #333;
-            overflow-x: auto;
-        }
-        .nav-btn {
-            padding: 8px 16px;
-            background: #333;
-            border: none;
-            border-radius: 6px;
-            color: #888;
-            font-size: 13px;
-            cursor: pointer;
-            white-space: nowrap;
+        .back-link {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #4ecca3;
             text-decoration: none;
+            font-size: 14px;
         }
-        .nav-btn.active { background: #4ecca3; color: #0f0f23; }
-        .nav-btn:hover:not(.active) { background: #444; }
 
         .container { padding: 16px; max-width: 600px; margin: 0 auto; }
 
@@ -194,16 +181,11 @@
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Ordering Hub</h1>
-        <div class="subtitle">Purchase Orders & Receiving</div>
+    <div class="header" style="position: relative;">
+        <a href="index.html" class="back-link">← Back</a>
+        <h1>View Orders</h1>
+        <div class="subtitle">Cart & Purchase Orders</div>
     </div>
-
-    <nav class="nav-bar">
-        <a href="index.html" class="nav-btn">Scanner</a>
-        <a href="orders.html" class="nav-btn active">Orders</a>
-        <a href="receiving.html" class="nav-btn">Receiving</a>
-    </nav>
 
     <div class="container">
         <!-- Cart Section (Pending Orders) -->
@@ -235,7 +217,7 @@
                 <div class="empty-state-icon">📱</div>
                 <div style="font-size: 16px; color: #fff; margin-bottom: 8px;">No items in cart</div>
                 <div style="font-size: 13px;">Scan items and tap "Order from [Supplier]" to add them</div>
-                <a href="index.html" class="btn btn-primary" style="margin-top: 16px; display: inline-block; width: auto; padding: 12px 24px;">Open Scanner</a>
+                <a href="scanner.html" class="btn btn-primary" style="margin-top: 16px; display: inline-block; width: auto; padding: 12px 24px;">Open Scanner</a>
             </div>
         </div>
 

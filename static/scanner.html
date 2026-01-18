@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Best Buy Scanner</title>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f0f23;
+            color: #e0e0e0;
+            min-height: 100vh;
+            overflow-x: hidden;
+            padding-bottom: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a1a3e 0%, #0f0f23 100%);
+            padding: 16px;
+            text-align: center;
+            border-bottom: 1px solid #333;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header h1 { font-size: 20px; font-weight: 600; color: #fff; }
+        .header .subtitle { font-size: 12px; color: #888; margin-top: 4px; }
+
+        .back-link {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #4ecca3;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .back-link:hover { text-decoration: underline; }
+
+        #scanner-section { padding: 16px; }
+        #scanner-container {
+            max-width: 400px;
+            margin: 0 auto;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #1a1a3e;
+        }
+        #reader { width: 100%; }
+        #reader video { border-radius: 8px; }
+
+        .scan-prompt { text-align: center; padding: 20px; color: #888; font-size: 14px; }
+
+        .tab-bar {
+            display: flex; gap: 8px; padding: 8px 16px; background: #1a1a3e;
+            border-radius: 8px; margin: 16px; max-width: 400px; margin-left: auto; margin-right: auto;
+        }
+        .tab {
+            flex: 1; padding: 10px; text-align: center; border-radius: 6px;
+            font-size: 13px; font-weight: 500; color: #888; cursor: pointer; transition: all 0.2s;
+        }
+        .tab.active { background: #4ecca3; color: #0f0f23; }
+
+        .manual-entry { max-width: 400px; margin: 16px auto; padding: 0 16px; }
+        .manual-entry input {
+            width: 100%; padding: 14px 16px; background: #1a1a3e;
+            border: 1px solid #333; border-radius: 8px; color: #fff;
+            font-size: 16px; text-align: center;
+        }
+        .manual-entry input::placeholder { color: #666; }
+        .manual-entry input:focus { outline: none; border-color: #4ecca3; }
+
+        #results { padding: 16px; display: none; max-width: 500px; margin: 0 auto; }
+
+        .product-card {
+            background: linear-gradient(135deg, #1a1a3e 0%, #252550 100%);
+            border-radius: 16px; padding: 20px; margin-bottom: 16px; border: 1px solid #333;
+        }
+        .product-name { font-size: 18px; font-weight: 600; color: #fff; margin-bottom: 8px; line-height: 1.3; }
+        .product-meta { display: flex; gap: 12px; font-size: 12px; color: #888; margin-bottom: 16px; }
+        .product-meta span { background: #252550; padding: 4px 8px; border-radius: 4px; }
+
+        .current-price {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 16px; background: rgba(255, 107, 107, 0.1);
+            border-radius: 12px; border: 1px solid rgba(255, 107, 107, 0.3);
+        }
+        .current-price .label { font-size: 12px; color: #ff6b6b; text-transform: uppercase; }
+        .current-price .vendor { font-size: 14px; color: #fff; margin-top: 4px; }
+        .current-price .price { font-size: 28px; font-weight: 700; color: #ff6b6b; }
+
+        .price-list { margin-top: 20px; }
+        .price-list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .price-list-header h3 { font-size: 14px; color: #888; text-transform: uppercase; }
+        .price-count { font-size: 12px; color: #4ecca3; background: rgba(78, 204, 163, 0.1); padding: 4px 8px; border-radius: 4px; }
+
+        .price-item {
+            background: #1a1a3e; border-radius: 12px; padding: 16px; margin-bottom: 10px;
+            border: 1px solid #333; transition: all 0.2s;
+        }
+        .price-item:hover { border-color: #4ecca3; }
+        .price-item.best { background: linear-gradient(135deg, #1a3a2e 0%, #1a1a3e 100%); border: 2px solid #4ecca3; }
+
+        .price-item-top { display: flex; align-items: center; gap: 12px; }
+        .rank-badge {
+            width: 36px; height: 36px; border-radius: 50%; background: #333;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 14px; flex-shrink: 0;
+        }
+        .price-item.best .rank-badge { background: #4ecca3; color: #0f0f23; }
+
+        .price-info { flex: 1; min-width: 0; }
+        .supplier-name { font-weight: 600; font-size: 15px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .price-details { font-size: 12px; color: #888; margin-top: 4px; }
+        .price-details .promo { color: #ffd700; }
+
+        .price-values { text-align: right; flex-shrink: 0; }
+        .unit-price { font-size: 20px; font-weight: 700; color: #4ecca3; }
+        .savings { font-size: 11px; color: #4ecca3; margin-top: 2px; }
+
+        .order-btn {
+            display: block;
+            width: 100%;
+            margin-top: 12px;
+            padding: 10px;
+            background: rgba(78, 204, 163, 0.15);
+            border: 1px solid #4ecca3;
+            border-radius: 8px;
+            color: #4ecca3;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .order-btn:hover { background: #4ecca3; color: #0f0f23; }
+        .order-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .no-prices { text-align: center; padding: 40px 20px; color: #888; }
+
+        .btn {
+            display: block; width: 100%; padding: 16px; border: none; border-radius: 12px;
+            font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 16px; transition: all 0.2s;
+            text-align: center; text-decoration: none;
+        }
+        .btn-primary { background: #4ecca3; color: #0f0f23; }
+        .btn-secondary { background: #333; color: #fff; }
+
+        .loading { text-align: center; padding: 60px 20px; }
+        .spinner {
+            width: 48px; height: 48px; border: 3px solid #333; border-top-color: #4ecca3;
+            border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { color: #888; font-size: 14px; }
+
+        .error-card {
+            background: rgba(255, 107, 107, 0.1); border: 1px solid rgba(255, 107, 107, 0.3);
+            border-radius: 12px; padding: 24px; text-align: center;
+        }
+        .error-card .icon { font-size: 48px; margin-bottom: 12px; }
+        .error-card .message { color: #ff6b6b; font-size: 16px; }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #4ecca3;
+            color: #0f0f23;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            z-index: 300;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+        .cart-float {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #4ecca3;
+            color: #0f0f23;
+            padding: 14px 20px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 14px;
+            text-decoration: none;
+            box-shadow: 0 4px 20px rgba(78, 204, 163, 0.4);
+            z-index: 200;
+            display: none;
+        }
+        .cart-float.show { display: flex; align-items: center; gap: 8px; }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="header" style="position: relative;">
+        <a href="index.html" class="back-link">← Back</a>
+        <h1>Best Buy Scanner</h1>
+        <div class="subtitle">Find the best wholesale prices</div>
+    </div>
+
+    <div class="tab-bar">
+        <div class="tab active" data-tab="scan" onclick="switchTab('scan')">Scan</div>
+        <div class="tab" data-tab="manual" onclick="switchTab('manual')">Manual</div>
+    </div>
+
+    <div id="scan-tab">
+        <div id="scanner-section">
+            <div id="scanner-container">
+                <div id="reader"></div>
+            </div>
+            <div class="scan-prompt" id="scan-prompt">Point camera at item barcode</div>
+        </div>
+    </div>
+
+    <div id="manual-tab" class="hidden">
+        <div class="manual-entry">
+            <input type="text" id="manual-upc" placeholder="Enter UPC code" inputmode="numeric" pattern="[0-9]*">
+            <button class="btn btn-primary" onclick="manualLookup()">Look Up</button>
+        </div>
+    </div>
+
+    <div id="results"></div>
+    <div id="toast" class="toast"></div>
+
+    <a href="orders.html" class="cart-float" id="cart-float">
+        <span id="cart-count">0</span> items in cart
+    </a>
+
+    <script>
+        const API_BASE = '/api/best-buy';
+        let scanner = null;
+        let currentTab = 'scan';
+        let currentUpc = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            if (currentTab === 'scan') startScanner();
+            updateCartBadge();
+        });
+
+        async function updateCartBadge() {
+            try {
+                const res = await fetch(API_BASE + '/cart/summary');
+                const data = await res.json();
+                const cartFloat = document.getElementById('cart-float');
+                const cartCount = document.getElementById('cart-count');
+                if (data.total_items > 0) {
+                    cartCount.textContent = data.total_items;
+                    cartFloat.classList.add('show');
+                } else {
+                    cartFloat.classList.remove('show');
+                }
+            } catch (e) {
+                console.error('Failed to get cart summary:', e);
+            }
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+            document.getElementById('scan-tab').classList.toggle('hidden', tab !== 'scan');
+            document.getElementById('manual-tab').classList.toggle('hidden', tab !== 'manual');
+            if (tab === 'scan') startScanner();
+            else if (scanner) scanner.stop().catch(() => {});
+            document.getElementById('results').style.display = 'none';
+        }
+
+        async function startScanner() {
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('scan-prompt').style.display = 'block';
+            document.getElementById('scanner-container').style.display = 'block';
+
+            if (scanner) {
+                try { await scanner.stop(); } catch (e) {}
+                scanner = null;
+            }
+
+            scanner = new Html5Qrcode("reader");
+            try {
+                await scanner.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 250, height: 150 } },
+                    onScanSuccess,
+                    () => {}
+                );
+            } catch (err) {
+                console.error("Scanner error:", err);
+                document.getElementById('scan-prompt').textContent = "Camera access denied. Use Manual tab.";
+            }
+        }
+
+        async function onScanSuccess(upc) {
+            if (scanner) await scanner.stop().catch(() => {});
+            document.getElementById('scanner-container').style.display = 'none';
+            document.getElementById('scan-prompt').style.display = 'none';
+            await lookupUPC(upc);
+        }
+
+        async function manualLookup() {
+            const upc = document.getElementById('manual-upc').value.trim();
+            if (!upc) { alert('Please enter a UPC code'); return; }
+            await lookupUPC(upc);
+        }
+
+        async function lookupUPC(upc) {
+            currentUpc = upc;
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.style.display = 'block';
+            showLoading(resultsDiv, upc);
+            try {
+                const response = await fetch(API_BASE + '/scan/' + upc);
+                const data = await response.json();
+                renderResults(resultsDiv, data);
+            } catch (error) {
+                showError(resultsDiv, error.message);
+            }
+        }
+
+        function showLoading(container, upc) {
+            while (container.firstChild) container.removeChild(container.firstChild);
+            const div = document.createElement('div');
+            div.className = 'loading';
+            const spinner = document.createElement('div');
+            spinner.className = 'spinner';
+            div.appendChild(spinner);
+            const text = document.createElement('div');
+            text.className = 'loading-text';
+            text.textContent = 'Looking up ' + upc + '...';
+            div.appendChild(text);
+            container.appendChild(div);
+        }
+
+        function showError(container, message) {
+            while (container.firstChild) container.removeChild(container.firstChild);
+            const card = document.createElement('div');
+            card.className = 'error-card';
+            const icon = document.createElement('div');
+            icon.className = 'icon';
+            icon.textContent = '!';
+            card.appendChild(icon);
+            const msg = document.createElement('div');
+            msg.className = 'message';
+            msg.textContent = 'Error: ' + message;
+            card.appendChild(msg);
+            container.appendChild(card);
+            container.appendChild(createScanAgainButton());
+        }
+
+        function renderResults(container, data) {
+            while (container.firstChild) container.removeChild(container.firstChild);
+            if (data.error && !data.product) {
+                const card = document.createElement('div');
+                card.className = 'error-card';
+                const icon = document.createElement('div');
+                icon.className = 'icon';
+                icon.textContent = '?';
+                card.appendChild(icon);
+                const msg = document.createElement('div');
+                msg.className = 'message';
+                msg.textContent = 'Product not found';
+                card.appendChild(msg);
+                const upcDiv = document.createElement('div');
+                upcDiv.style.cssText = 'color: #888; font-size: 13px; margin-top: 8px;';
+                upcDiv.textContent = 'UPC: ' + data.upc;
+                card.appendChild(upcDiv);
+                container.appendChild(card);
+                container.appendChild(createScanAgainButton());
+                return;
+            }
+
+            const product = data.product || {};
+            const prices = data.prices || [];
+
+            // Product card
+            const prodCard = document.createElement('div');
+            prodCard.className = 'product-card';
+
+            const name = document.createElement('div');
+            name.className = 'product-name';
+            name.textContent = product.name || 'Unknown Product';
+            prodCard.appendChild(name);
+
+            const meta = document.createElement('div');
+            meta.className = 'product-meta';
+            const upcSpan = document.createElement('span');
+            upcSpan.textContent = data.upc;
+            meta.appendChild(upcSpan);
+            const deptSpan = document.createElement('span');
+            deptSpan.textContent = product.department || 'No Dept';
+            meta.appendChild(deptSpan);
+            prodCard.appendChild(meta);
+
+            const currPrice = document.createElement('div');
+            currPrice.className = 'current-price';
+            const currLeft = document.createElement('div');
+            const currLabel = document.createElement('div');
+            currLabel.className = 'label';
+            currLabel.textContent = 'Your Current Cost';
+            currLeft.appendChild(currLabel);
+            const currVendor = document.createElement('div');
+            currVendor.className = 'vendor';
+            currVendor.textContent = product.current_vendor || 'Unknown';
+            currLeft.appendChild(currVendor);
+            currPrice.appendChild(currLeft);
+            const currPriceVal = document.createElement('div');
+            currPriceVal.className = 'price';
+            currPriceVal.textContent = product.current_cost ? '$' + product.current_cost.toFixed(2) : 'N/A';
+            currPrice.appendChild(currPriceVal);
+            prodCard.appendChild(currPrice);
+            container.appendChild(prodCard);
+
+            // Price list
+            const priceList = document.createElement('div');
+            priceList.className = 'price-list';
+
+            const header = document.createElement('div');
+            header.className = 'price-list-header';
+            const h3 = document.createElement('h3');
+            h3.textContent = 'Supplier Prices';
+            header.appendChild(h3);
+            const countSpan = document.createElement('span');
+            countSpan.className = 'price-count';
+            countSpan.textContent = prices.length + ' found';
+            header.appendChild(countSpan);
+            priceList.appendChild(header);
+
+            if (prices.length === 0) {
+                const noPrices = document.createElement('div');
+                noPrices.className = 'no-prices';
+                noPrices.textContent = 'No supplier prices available yet';
+                priceList.appendChild(noPrices);
+            } else {
+                prices.forEach(function(price, i) {
+                    const item = document.createElement('div');
+                    item.className = 'price-item' + (i === 0 ? ' best' : '');
+
+                    const topRow = document.createElement('div');
+                    topRow.className = 'price-item-top';
+
+                    const badge = document.createElement('div');
+                    badge.className = 'rank-badge';
+                    badge.textContent = price.rank;
+                    topRow.appendChild(badge);
+
+                    const info = document.createElement('div');
+                    info.className = 'price-info';
+                    const supplierName = document.createElement('div');
+                    supplierName.className = 'supplier-name';
+                    supplierName.textContent = price.supplier_name;
+                    info.appendChild(supplierName);
+                    const details = document.createElement('div');
+                    details.className = 'price-details';
+                    details.textContent = 'Case: $' + (price.case_cost ? price.case_cost.toFixed(2) : 'N/A') + ' (' + price.case_pack + ' units)';
+                    if (price.price_type === 'promo') {
+                        const promoSpan = document.createElement('span');
+                        promoSpan.className = 'promo';
+                        promoSpan.textContent = ' PROMO';
+                        details.appendChild(promoSpan);
+                    }
+                    info.appendChild(details);
+                    topRow.appendChild(info);
+
+                    const values = document.createElement('div');
+                    values.className = 'price-values';
+                    const unitPrice = document.createElement('div');
+                    unitPrice.className = 'unit-price';
+                    unitPrice.textContent = '$' + price.unit_cost.toFixed(2);
+                    values.appendChild(unitPrice);
+                    if (price.savings_vs_current > 0) {
+                        const savings = document.createElement('div');
+                        savings.className = 'savings';
+                        savings.textContent = 'Save $' + price.savings_vs_current.toFixed(2);
+                        values.appendChild(savings);
+                    }
+                    topRow.appendChild(values);
+                    item.appendChild(topRow);
+
+                    // Order button
+                    const orderBtn = document.createElement('button');
+                    orderBtn.className = 'order-btn';
+                    orderBtn.textContent = 'Order from ' + price.supplier_name;
+                    orderBtn.onclick = function() { addToCart(price.supplier_id, price.supplier_name, price.unit_cost); };
+                    item.appendChild(orderBtn);
+
+                    priceList.appendChild(item);
+                });
+            }
+            container.appendChild(priceList);
+
+            container.appendChild(createScanAgainButton());
+        }
+
+        async function addToCart(supplierId, supplierName, unitCost) {
+            try {
+                const params = new URLSearchParams({
+                    upc: currentUpc,
+                    supplier_id: supplierId,
+                    quantity: 1,
+                    unit_cost: unitCost
+                });
+                const res = await fetch(API_BASE + '/cart?' + params, { method: 'POST' });
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Failed to add to cart');
+                }
+                showToast('Added to ' + supplierName + ' order');
+                updateCartBadge();
+            } catch (e) {
+                console.error('Failed to add to cart:', e);
+                alert(e.message);
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(function() { toast.classList.remove('show'); }, 2000);
+        }
+
+        function createScanAgainButton() {
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-secondary';
+            btn.textContent = 'Scan Another';
+            btn.onclick = resetScanner;
+            return btn;
+        }
+
+        async function resetScanner() {
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('manual-upc').value = '';
+            if (currentTab === 'scan') await startScanner();
+        }
+
+        document.getElementById('manual-upc').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') manualLookup();
+        });
+    </script>
+</body>
+</html>
