@@ -59,6 +59,7 @@ for d in FRONTEND_DIRS:
 
 
 @app.get("/")
+@app.get("/index.html")
 async def root():
     """Serve the scanner app or show API info."""
     if FRONTEND_DIR:
@@ -71,6 +72,26 @@ async def root():
         "docs": "/docs",
         "scanner": "/static/index.html"
     }
+
+
+@app.get("/orders.html")
+async def orders_page():
+    """Serve the orders page."""
+    if FRONTEND_DIR:
+        orders_file = FRONTEND_DIR / "orders.html"
+        if orders_file.exists():
+            return FileResponse(orders_file)
+    return {"error": "Orders page not found"}
+
+
+@app.get("/receiving.html")
+async def receiving_page():
+    """Serve the receiving page."""
+    if FRONTEND_DIR:
+        receiving_file = FRONTEND_DIR / "receiving.html"
+        if receiving_file.exists():
+            return FileResponse(receiving_file)
+    return {"error": "Receiving page not found"}
 
 
 @app.get("/health")
