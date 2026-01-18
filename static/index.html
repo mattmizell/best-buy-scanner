@@ -9,15 +9,14 @@
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: #0f0f23;
             color: #e0e0e0;
             min-height: 100vh;
             overflow-x: hidden;
+            padding-bottom: 20px;
         }
-
         .header {
             background: linear-gradient(135deg, #1a1a3e 0%, #0f0f23 100%);
             padding: 16px;
@@ -27,9 +26,48 @@
             top: 0;
             z-index: 100;
         }
-
         .header h1 { font-size: 20px; font-weight: 600; color: #fff; }
         .header .subtitle { font-size: 12px; color: #888; margin-top: 4px; }
+
+        .nav-bar {
+            display: flex;
+            gap: 8px;
+            padding: 12px 16px;
+            background: #1a1a3e;
+            border-bottom: 1px solid #333;
+            overflow-x: auto;
+        }
+        .nav-btn {
+            padding: 8px 16px;
+            background: #333;
+            border: none;
+            border-radius: 6px;
+            color: #888;
+            font-size: 13px;
+            cursor: pointer;
+            white-space: nowrap;
+            text-decoration: none;
+            position: relative;
+        }
+        .nav-btn.active { background: #4ecca3; color: #0f0f23; }
+        .nav-btn:hover:not(.active) { background: #444; }
+        .cart-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: #ff6b6b;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+        }
+        .cart-badge.hidden { display: none; }
 
         #scanner-section { padding: 16px; }
         #scanner-container {
@@ -44,6 +82,16 @@
 
         .scan-prompt { text-align: center; padding: 20px; color: #888; font-size: 14px; }
 
+        .tab-bar {
+            display: flex; gap: 8px; padding: 8px 16px; background: #1a1a3e;
+            border-radius: 8px; margin: 16px; max-width: 400px; margin-left: auto; margin-right: auto;
+        }
+        .tab {
+            flex: 1; padding: 10px; text-align: center; border-radius: 6px;
+            font-size: 13px; font-weight: 500; color: #888; cursor: pointer; transition: all 0.2s;
+        }
+        .tab.active { background: #4ecca3; color: #0f0f23; }
+
         .manual-entry { max-width: 400px; margin: 16px auto; padding: 0 16px; }
         .manual-entry input {
             width: 100%; padding: 14px 16px; background: #1a1a3e;
@@ -53,7 +101,7 @@
         .manual-entry input::placeholder { color: #666; }
         .manual-entry input:focus { outline: none; border-color: #4ecca3; }
 
-        #results { padding: 16px; display: none; }
+        #results { padding: 16px; display: none; max-width: 500px; margin: 0 auto; }
 
         .product-card {
             background: linear-gradient(135deg, #1a1a3e 0%, #252550 100%);
@@ -79,11 +127,12 @@
 
         .price-item {
             background: #1a1a3e; border-radius: 12px; padding: 16px; margin-bottom: 10px;
-            display: flex; align-items: center; gap: 12px; border: 1px solid #333; transition: all 0.2s;
+            border: 1px solid #333; transition: all 0.2s;
         }
         .price-item:hover { border-color: #4ecca3; }
         .price-item.best { background: linear-gradient(135deg, #1a3a2e 0%, #1a1a3e 100%); border: 2px solid #4ecca3; }
 
+        .price-item-top { display: flex; align-items: center; gap: 12px; }
         .rank-badge {
             width: 36px; height: 36px; border-radius: 50%; background: #333;
             display: flex; align-items: center; justify-content: center;
@@ -100,13 +149,22 @@
         .unit-price { font-size: 20px; font-weight: 700; color: #4ecca3; }
         .savings { font-size: 11px; color: #4ecca3; margin-top: 2px; }
 
-        .summary-card {
-            background: linear-gradient(135deg, #4ecca3 0%, #2ecc71 100%);
-            border-radius: 16px; padding: 24px; text-align: center; color: #0f0f23; margin-top: 20px;
+        .order-btn {
+            display: block;
+            width: 100%;
+            margin-top: 12px;
+            padding: 10px;
+            background: rgba(78, 204, 163, 0.15);
+            border: 1px solid #4ecca3;
+            border-radius: 8px;
+            color: #4ecca3;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
         }
-        .summary-card .label { font-size: 12px; text-transform: uppercase; opacity: 0.8; }
-        .summary-card .amount { font-size: 40px; font-weight: 800; margin: 8px 0; }
-        .summary-card .detail { font-size: 14px; opacity: 0.9; }
+        .order-btn:hover { background: #4ecca3; color: #0f0f23; }
+        .order-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .no-prices { text-align: center; padding: 40px 20px; color: #888; }
         .no-prices-icon { font-size: 48px; margin-bottom: 16px; }
@@ -114,6 +172,7 @@
         .btn {
             display: block; width: 100%; padding: 16px; border: none; border-radius: 12px;
             font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 16px; transition: all 0.2s;
+            text-align: center; text-decoration: none;
         }
         .btn-primary { background: #4ecca3; color: #0f0f23; }
         .btn-primary:hover { background: #3db892; }
@@ -135,15 +194,22 @@
         .error-card .icon { font-size: 48px; margin-bottom: 12px; }
         .error-card .message { color: #ff6b6b; font-size: 16px; }
 
-        .tab-bar {
-            display: flex; gap: 8px; padding: 8px 16px; background: #1a1a3e;
-            border-radius: 8px; margin: 16px; max-width: 400px; margin-left: auto; margin-right: auto;
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #4ecca3;
+            color: #0f0f23;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            z-index: 300;
+            opacity: 0;
+            transition: all 0.3s ease;
         }
-        .tab {
-            flex: 1; padding: 10px; text-align: center; border-radius: 6px;
-            font-size: 13px; font-weight: 500; color: #888; cursor: pointer; transition: all 0.2s;
-        }
-        .tab.active { background: #4ecca3; color: #0f0f23; }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
         .hidden { display: none !important; }
     </style>
@@ -153,6 +219,15 @@
         <h1>Best Buy Scanner</h1>
         <div class="subtitle">Find the best wholesale prices</div>
     </div>
+
+    <nav class="nav-bar">
+        <a href="index.html" class="nav-btn active">Scanner</a>
+        <a href="orders.html" class="nav-btn" id="orders-nav">
+            Orders
+            <span class="cart-badge hidden" id="cart-badge">0</span>
+        </a>
+        <a href="receiving.html" class="nav-btn">Receiving</a>
+    </nav>
 
     <div class="tab-bar">
         <div class="tab active" data-tab="scan" onclick="switchTab('scan')">Scan</div>
@@ -176,11 +251,34 @@
     </div>
 
     <div id="results"></div>
+    <div id="toast" class="toast"></div>
 
     <script>
         const API_BASE = '/api/best-buy';
         let scanner = null;
         let currentTab = 'scan';
+        let currentUpc = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            if (currentTab === 'scan') startScanner();
+            updateCartBadge();
+        });
+
+        async function updateCartBadge() {
+            try {
+                const res = await fetch(API_BASE + '/cart/summary');
+                const data = await res.json();
+                const badge = document.getElementById('cart-badge');
+                if (data.total_items > 0) {
+                    badge.textContent = data.total_items;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            } catch (e) {
+                console.error('Failed to get cart summary:', e);
+            }
+        }
 
         function switchTab(tab) {
             currentTab = tab;
@@ -197,13 +295,8 @@
             document.getElementById('scan-prompt').style.display = 'block';
             document.getElementById('scanner-container').style.display = 'block';
 
-            // Wait for previous scanner to fully stop before starting new one
             if (scanner) {
-                try {
-                    await scanner.stop();
-                } catch (e) {
-                    // Ignore - scanner might already be stopped
-                }
+                try { await scanner.stop(); } catch (e) {}
                 scanner = null;
             }
 
@@ -235,6 +328,7 @@
         }
 
         async function lookupUPC(upc) {
+            currentUpc = upc;
             const resultsDiv = document.getElementById('results');
             resultsDiv.style.display = 'block';
             showLoading(resultsDiv, upc);
@@ -248,10 +342,12 @@
         }
 
         function showLoading(container, upc) {
-            container.textContent = '';
+            container.innerHTML = '';
             const div = document.createElement('div');
             div.className = 'loading';
-            div.appendChild(createSpinner());
+            const spinner = document.createElement('div');
+            spinner.className = 'spinner';
+            div.appendChild(spinner);
             const text = document.createElement('div');
             text.className = 'loading-text';
             text.textContent = 'Looking up ' + upc + '...';
@@ -259,14 +355,8 @@
             container.appendChild(div);
         }
 
-        function createSpinner() {
-            const spinner = document.createElement('div');
-            spinner.className = 'spinner';
-            return spinner;
-        }
-
         function showError(container, message) {
-            container.textContent = '';
+            container.innerHTML = '';
             const card = document.createElement('div');
             card.className = 'error-card';
             const icon = document.createElement('div');
@@ -282,7 +372,7 @@
         }
 
         function renderResults(container, data) {
-            container.textContent = '';
+            container.innerHTML = '';
             if (data.error && !data.product) {
                 const card = document.createElement('div');
                 card.className = 'error-card';
@@ -305,7 +395,6 @@
 
             const product = data.product || {};
             const prices = data.prices || [];
-            const stats = data.statistics;
 
             // Product card
             const prodCard = document.createElement('div');
@@ -318,12 +407,12 @@
 
             const meta = document.createElement('div');
             meta.className = 'product-meta';
+            const upcSpan = document.createElement('span');
+            upcSpan.textContent = data.upc;
+            meta.appendChild(upcSpan);
             const deptSpan = document.createElement('span');
             deptSpan.textContent = product.department || 'No Dept';
             meta.appendChild(deptSpan);
-            const packSpan = document.createElement('span');
-            packSpan.textContent = 'Pack: ' + (product.pack_size || 1);
-            meta.appendChild(packSpan);
             prodCard.appendChild(meta);
 
             const currPrice = document.createElement('div');
@@ -363,10 +452,6 @@
             if (prices.length === 0) {
                 const noPrices = document.createElement('div');
                 noPrices.className = 'no-prices';
-                const noPricesIcon = document.createElement('div');
-                noPricesIcon.className = 'no-prices-icon';
-                noPricesIcon.textContent = '\uD83D\uDCE6';
-                noPrices.appendChild(noPricesIcon);
                 const noPricesText = document.createElement('div');
                 noPricesText.textContent = 'No supplier prices available yet';
                 noPrices.appendChild(noPricesText);
@@ -376,10 +461,13 @@
                     const item = document.createElement('div');
                     item.className = 'price-item' + (i === 0 ? ' best' : '');
 
+                    const topRow = document.createElement('div');
+                    topRow.className = 'price-item-top';
+
                     const badge = document.createElement('div');
                     badge.className = 'rank-badge';
                     badge.textContent = price.rank;
-                    item.appendChild(badge);
+                    topRow.appendChild(badge);
 
                     const info = document.createElement('div');
                     info.className = 'price-info';
@@ -397,7 +485,7 @@
                         details.appendChild(promoSpan);
                     }
                     info.appendChild(details);
-                    item.appendChild(info);
+                    topRow.appendChild(info);
 
                     const values = document.createElement('div');
                     values.className = 'price-values';
@@ -411,34 +499,51 @@
                         savings.textContent = 'Save $' + price.savings_vs_current.toFixed(2);
                         values.appendChild(savings);
                     }
-                    item.appendChild(values);
+                    topRow.appendChild(values);
+                    item.appendChild(topRow);
+
+                    // Order button
+                    const orderBtn = document.createElement('button');
+                    orderBtn.className = 'order-btn';
+                    orderBtn.textContent = 'Order from ' + price.supplier_name;
+                    orderBtn.onclick = function() { addToCart(price.supplier_id, price.supplier_name, price.unit_cost); };
+                    item.appendChild(orderBtn);
 
                     priceList.appendChild(item);
                 });
             }
             container.appendChild(priceList);
 
-            // Summary card
-            if (stats && stats.potential_savings > 0 && prices.length > 0) {
-                const summary = document.createElement('div');
-                summary.className = 'summary-card';
-                const summaryLabel = document.createElement('div');
-                summaryLabel.className = 'label';
-                summaryLabel.textContent = 'Potential Savings';
-                summary.appendChild(summaryLabel);
-                const summaryAmount = document.createElement('div');
-                summaryAmount.className = 'amount';
-                const caseSavings = stats.potential_savings * (product.pack_size || 1);
-                summaryAmount.textContent = '$' + caseSavings.toFixed(2);
-                summary.appendChild(summaryAmount);
-                const summaryDetail = document.createElement('div');
-                summaryDetail.className = 'detail';
-                summaryDetail.textContent = 'per case from ' + prices[0].supplier_name;
-                summary.appendChild(summaryDetail);
-                container.appendChild(summary);
-            }
-
             container.appendChild(createScanAgainButton());
+        }
+
+        async function addToCart(supplierId, supplierName, unitCost) {
+            try {
+                const params = new URLSearchParams({
+                    upc: currentUpc,
+                    supplier_id: supplierId,
+                    quantity: 1,
+                    unit_cost: unitCost
+                });
+                const res = await fetch(API_BASE + '/cart?' + params, { method: 'POST' });
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Failed to add to cart');
+                }
+                const data = await res.json();
+                showToast('Added to ' + supplierName + ' order');
+                updateCartBadge();
+            } catch (e) {
+                console.error('Failed to add to cart:', e);
+                alert(e.message);
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
         }
 
         function createScanAgainButton() {
@@ -457,10 +562,6 @@
 
         document.getElementById('manual-upc').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') manualLookup();
-        });
-
-        document.addEventListener('DOMContentLoaded', function() {
-            if (currentTab === 'scan') startScanner();
         });
     </script>
 </body>

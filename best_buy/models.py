@@ -244,6 +244,45 @@ class SupplierPriceFeed(Base):
 
 
 # ============================================================
+# ORDER CART - Items pending conversion to POs
+# ============================================================
+
+class OrderCartItem(Base):
+    """
+    Items added from Best Buy Scanner waiting to become POs.
+    Grouped by supplier when creating POs.
+    """
+    __tablename__ = "order_cart_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Product info
+    upc = Column(String(20), nullable=False, index=True)
+    product_id = Column(Integer, ForeignKey("products.id"))
+    product_name = Column(String(255))
+
+    # Selected supplier (from best buy comparison)
+    supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=False)
+
+    # Order details
+    quantity = Column(Integer, nullable=False, default=1)
+    unit_cost = Column(Numeric(10, 4), nullable=False)
+    case_pack = Column(Integer, default=1)
+
+    # Tracking
+    added_at = Column(DateTime, server_default=func.now())
+    added_by = Column(String(50))
+
+    # Relationships
+    product = relationship("Product")
+    supplier = relationship("Supplier")
+
+    __table_args__ = (
+        Index('idx_cart_supplier', 'supplier_id'),
+    )
+
+
+# ============================================================
 # ORDERING HUB MODELS
 # ============================================================
 

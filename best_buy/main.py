@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse
 from pathlib import Path
 
 from .database import init_db, SessionLocal
-from .routers import scan, suppliers, products, orders, receiving
+from .routers import scan, suppliers, products, orders, receiving, cart
 
 # Initialize app
 app = FastAPI(
@@ -41,6 +41,7 @@ app.include_router(suppliers.router, prefix="/api/best-buy")
 app.include_router(products.router, prefix="/api/best-buy")
 app.include_router(orders.router, prefix="/api/best-buy")
 app.include_router(receiving.router, prefix="/api/best-buy")
+app.include_router(cart.router, prefix="/api/best-buy")
 
 # Static files for frontend - check multiple locations
 FRONTEND_DIRS = [
