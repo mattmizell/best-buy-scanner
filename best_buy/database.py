@@ -44,7 +44,11 @@ def get_db():
 
 
 def init_db():
-    """Create all tables."""
+    """Create all tables if they don't exist."""
     from . import models  # noqa - import to register models
-    Base.metadata.create_all(bind=engine)
-    print("Database tables initialized")
+    try:
+        Base.metadata.create_all(bind=engine, checkfirst=True)
+        print("Database tables initialized")
+    except Exception as e:
+        # Tables/indexes may already exist - that's fine
+        print(f"Database init note: {e}")
