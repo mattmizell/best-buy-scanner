@@ -52,25 +52,34 @@ def init_db():
     existing_tables = inspector.get_table_names()
     print(f"Existing tables: {existing_tables}")
 
-    # Create each table individually to handle partial states
-    for table in Base.metadata.sorted_tables:
-        if table.name not in existing_tables:
-            try:
-                table.create(engine, checkfirst=True)
-                print(f"Created table: {table.name}")
-            except Exception as e:
-                print(f"Error creating {table.name}: {e}")
-        else:
-            print(f"Table exists: {table.name}")
-
-    # Create indexes separately, ignoring if they exist
+    # Drop any orphan indexes that might conflict (from previous failed attempts)
+    orphan_indexes = [
+        'idx_supplier_price_lookup',
+        'idx_upc_alias_lookup',
+        'idx_cart_supplier',
+        'idx_po_line_lookup'
+    ]
     with engine.connect() as conn:
+        for idx_name in orphan_indexes:
+            try:
+                conn.execute(text(f"DROP INDEX IF EXISTS {idx_name}"))
+                conn.commit()
+            except Exception:
+                pass
+
+    # Create all tables - let SQLAlchemy handle it properly
+    try:
+        Base.metadata.create_all(bind=engine, checkfirst=True)
+        print("All tables created successfully")
+    except Exception as e:
+        print(f"Error during table creation: {e}")
+        # Try creating each table individually as fallback
         for table in Base.metadata.sorted_tables:
-            for index in table.indexes:
+            if table.name not in existing_tables:
                 try:
-                    index.create(engine, checkfirst=True)
-                except Exception:
-                    pass  # Index already exists
-        conn.commit()
+                    table.create(engine, checkfirst=True)
+                    print(f"Created table: {table.name}")
+                except Exception as te:
+                    print(f"Error creating {table.name}: {te}")
 
     print("Database initialization complete")

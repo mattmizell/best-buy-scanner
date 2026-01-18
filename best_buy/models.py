@@ -129,7 +129,7 @@ class SupplierPrice(Base):
     supplier = relationship("Supplier", back_populates="prices")
 
     __table_args__ = (
-        Index('idx_supplier_price_lookup', 'upc', 'supplier_id', 'effective_date'),
+        Index('ix_scanner_price_lookup', 'upc', 'supplier_id', 'effective_date'),
     )
 
 
@@ -153,7 +153,7 @@ class UPCAlias(Base):
     created_by = Column(String(50))
 
     __table_args__ = (
-        Index('idx_upc_alias_lookup', 'supplier_id', 'supplier_sku', unique=True),
+        Index('ix_scanner_upc_alias', 'supplier_id', 'supplier_sku', unique=True),
     )
 
 
@@ -278,7 +278,7 @@ class OrderCartItem(Base):
     supplier = relationship("Supplier")
 
     __table_args__ = (
-        Index('idx_cart_supplier', 'supplier_id'),
+        Index('ix_scanner_cart_supplier', 'supplier_id'),
     )
 
 
@@ -361,7 +361,7 @@ class POLineItem(Base):
     receiving_items = relationship("ReceivingItem", back_populates="po_line_item")
 
     __table_args__ = (
-        Index('idx_po_line_lookup', 'po_id', 'upc'),
+        Index('ix_scanner_po_line', 'po_id', 'upc'),
     )
 
 
