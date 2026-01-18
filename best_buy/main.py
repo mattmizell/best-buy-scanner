@@ -205,14 +205,18 @@ def seed_products_from_embedded(db):
     db.commit()
     print(f"Created {created} products")
 
-    # Add sample prices
-    products = db.query(Product).filter(Product.current_cost.isnot(None)).limit(50).all()
+    # Add sample prices for ALL products with a cost
+    products = db.query(Product).filter(Product.current_cost.isnot(None)).all()
     suppliers = db.query(Supplier).all()
+    print(f"Adding sample prices for {len(products)} products from {len(suppliers)} suppliers...")
 
     prices_created = 0
     for product in products:
         current_cost = float(product.current_cost) if product.current_cost else 1.00
-        for supplier in suppliers[:3]:
+        # Each product gets prices from 2-4 random suppliers
+        num_suppliers = random.randint(2, min(4, len(suppliers)))
+        selected_suppliers = random.sample(suppliers, num_suppliers)
+        for supplier in selected_suppliers:
             variation = random.uniform(-0.15, 0.10)
             unit_cost = round(current_cost * (1 + variation), 4)
             case_pack = random.choice([6, 12, 24, 36, 48])
@@ -231,6 +235,11 @@ def seed_products_from_embedded(db):
             )
             db.add(price)
             prices_created += 1
+
+        # Commit every 500 prices to avoid memory issues
+        if prices_created % 500 == 0:
+            db.commit()
+            print(f"  Created {prices_created} prices...")
 
     db.commit()
     print(f"Created {prices_created} sample prices")
