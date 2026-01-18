@@ -46,9 +46,31 @@ def get_db():
 def init_db():
     """Create all tables if they don't exist."""
     from . import models  # noqa - import to register models
-    try:
-        Base.metadata.create_all(bind=engine, checkfirst=True)
-        print("Database tables initialized")
-    except Exception as e:
-        # Tables/indexes may already exist - that's fine
-        print(f"Database init note: {e}")
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(engine)
+    existing_tables = inspector.get_table_names()
+    print(f"Existing tables: {existing_tables}")
+
+    # Create each table individually to handle partial states
+    for table in Base.metadata.sorted_tables:
+        if table.name not in existing_tables:
+            try:
+                table.create(engine, checkfirst=True)
+                print(f"Created table: {table.name}")
+            except Exception as e:
+                print(f"Error creating {table.name}: {e}")
+        else:
+            print(f"Table exists: {table.name}")
+
+    # Create indexes separately, ignoring if they exist
+    with engine.connect() as conn:
+        for table in Base.metadata.sorted_tables:
+            for index in table.indexes:
+                try:
+                    index.create(engine, checkfirst=True)
+                except Exception:
+                    pass  # Index already exists
+        conn.commit()
+
+    print("Database initialization complete")
