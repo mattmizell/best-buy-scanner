@@ -46,7 +46,8 @@ app.include_router(cart.router, prefix="/api/best-buy")
 # Static files for frontend - check multiple locations
 FRONTEND_DIRS = [
     Path(__file__).parent.parent / "best_buy_frontend",  # Local dev
-    Path(__file__).parent / "frontend",  # Render deployment
+    Path(__file__).parent.parent / "static",  # Render deployment
+    Path(__file__).parent / "frontend",  # Alternative
 ]
 
 FRONTEND_DIR = None
